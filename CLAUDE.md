@@ -16,8 +16,8 @@ its only runtime dependency. It started from the official JavaScript template.
 ```bash
 npm install
 npm test                                  # node --test, the built-in runner
-node --test test/devices.test.js          # one file
-node --test --test-name-pattern "plug"    # tests whose name matches
+node --test test/app.test.js              # one file
+node --test --test-name-pattern "fair"    # tests whose name matches
 npm run lint                              # ESLint
 npm run format:check                      # Prettier, as the CI runs it
 npm run format                            # Prettier, fix in place
@@ -32,17 +32,33 @@ pushing.
 
 ```
 index.js                          SDK wiring only: handlers registered before connect()
-src/devices/index.js              registry of the device blueprints + dispatch helpers
-src/devices/<type>.js             one device type per file (buildDevice, onPoll, onSetValue...)
-src/scenes.js                     scene action handlers (manifest `scene_actions`)
-src/widgets.js                    dashboard widget handlers (manifest `widgets`)
-src/config.js                     DEFAULT_CONFIG (mirrors the manifest defaults) + normalization
-src/weather.js                    example driver (Open-Meteo)
-gladys-assistant-integration.json manifest: name, config_schema, actions, image...
+src/app.js                        ErcotApp: pace, token, cycle, calendars, sensors, refusals, status
+src/ercot.js                      the ERCOT Public API: token (ROPC, form body), prices, parsing
+src/time.js                       ERCOT local time (hour ending, interval, DSTFlag) to UTC
+src/http.js                       the only network code: timeout, no redirect, bounded body, User-Agent
+src/devices.js                    the device of a load zone (one price feature)
+src/store.js                      /data/state.json: one operation at a time, bounded
+src/config.js                     account, key and zones, normalized
+src/i18n.js                       status and button texts
+scripts/cover.mjs                 generates cover.png (plain Node)
+scripts/mutants.mjs               mutation run (copies the repo, baseline first)
+gladys-assistant-integration.json manifest: config, action, energy calendars and templates
 docs/en.md, docs/fr.md            user documentation, re-hosted by Gladys (mandatory)
-test/                             node --test, against the SDK's fake Gladys (integration-sdk/testing)
-.github/scripts/release.mjs       release helpers (manifest bump, changelog), tested in test/
+test/                             node --test, fake Gladys of the SDK, fake fetch, test clocks
 ```
+
+## Module rules
+
+- One cycle every 15 minutes at most: the attempt time goes to /data BEFORE the first request; /data
+  unreadable or unwritable means no read. In-process waits use the monotonic clock.
+- The password is only sent to the token endpoint, in the form body; the password, the subscription key
+  and the token are never logged, never in /data, never in a status. The token stays in memory.
+- A refusal is only an OAuth `invalid_grant` (login) or a 401 naming the subscription key: never a 403,
+  another 401, a 400 without `invalid_grant` or an unreadable answer. A refused set of credentials is
+  never sent again by itself (8-bit salted tag in /data); the button tries once a minute at most.
+- A missing or textual price is never 0 and never guessed; only ended intervals go to the calendars.
+- Calendar keys `spot-ercot-rt-lz-<zone>` (15 minutes), template keys `ercot-rt-lz-<zone>`, the device
+  type `zone` and the feature `price` never change.
 
 ## Rules
 

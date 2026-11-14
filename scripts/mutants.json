@@ -1,0 +1,242 @@
+[
+  {
+    "name": "read interval shortened",
+    "file": "src/constants.js",
+    "from": "export const READ_INTERVAL = 15 * MINUTE;",
+    "to": "export const READ_INTERVAL = 10 * MINUTE;"
+  },
+  {
+    "name": "attempt not saved before the request",
+    "file": "src/app.js",
+    "from": "    if (!saved) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "future attempt trusted",
+    "file": "src/app.js",
+    "from": "raw.attempt_at > wall + SKEW ? wall : raw.attempt_at",
+    "to": "raw.attempt_at"
+  },
+  {
+    "name": "future pause trusted",
+    "file": "src/app.js",
+    "from": "raw.pause_until > wall + PAUSE_MAX + SKEW ? 0 : raw.pause_until",
+    "to": "raw.pause_until"
+  },
+  {
+    "name": "corrupt /data read as empty",
+    "file": "src/app.js",
+    "from": "    if (corrupt) state.attempt_at = wall;",
+    "to": ""
+  },
+  {
+    "name": "unreadable /data read as empty",
+    "file": "src/app.js",
+    "from": "    if (!result.ok) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "monotonic check skipped",
+    "file": "src/app.js",
+    "from": "      if (left > 0) {",
+    "to": "      if (false) {"
+  },
+  {
+    "name": "button reads whenever",
+    "file": "src/app.js",
+    "from": "} else if (this.readDueMono !== undefined && this.monotonic() >= this.readDueMono) {",
+    "to": "} else {"
+  },
+  {
+    "name": "backoff not doubling",
+    "file": "src/app.js",
+    "from": "READ_INTERVAL * 2 ** Math.max(0, Math.min(16, failures) - 1)",
+    "to": "READ_INTERVAL"
+  },
+  {
+    "name": "refusal forgotten at a restart",
+    "file": "src/app.js",
+    "from": "if (!this.credsChanged && tagOf(refused.salt, this.config) === refused.tag) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "refused credentials read by the timer",
+    "file": "src/app.js",
+    "from": "if (!state || state.refused || this.config.error) return Infinity;",
+    "to": "if (!state || this.config.error) return Infinity;"
+  },
+  {
+    "name": "refused credentials read by the cycle",
+    "file": "src/app.js",
+    "from": "(state.refused && !manual)",
+    "to": "false"
+  },
+  {
+    "name": "any 400 of the token is a refusal",
+    "file": "src/ercot.js",
+    "from": "err.body?.error === 'invalid_grant'",
+    "to": "true"
+  },
+  {
+    "name": "any 401 of the API is a key refusal",
+    "file": "src/ercot.js",
+    "from": "return typeof message === 'string' && /subscription key/i.test(message);",
+    "to": "return true;"
+  },
+  {
+    "name": "a fresh token retried",
+    "file": "src/app.js",
+    "from": "if (!token.fresh && !retried) {",
+    "to": "if (!retried) {"
+  },
+  {
+    "name": "no new token after a 401",
+    "file": "src/app.js",
+    "from": "            this.token = undefined;\n            if (!token.fresh",
+    "to": "            if (!token.fresh"
+  },
+  {
+    "name": "Retry-After ignored",
+    "file": "src/app.js",
+    "from": "const asked = retryAfterMs(failure.err?.retryAfter, failure.err?.date) ?? 0;",
+    "to": "const asked = 0;"
+  },
+  {
+    "name": "401 backoff not capped at one hour",
+    "file": "src/app.js",
+    "from": "failure.reason === 'unauthorized' ? MAX_AUTH_BACKOFF : MAX_BACKOFF",
+    "to": "MAX_BACKOFF"
+  },
+  {
+    "name": "button ignores the pause",
+    "file": "src/app.js",
+    "from": "} else if (this.state.pause_until > this.now()) {",
+    "to": "} else if (false) {"
+  },
+  {
+    "name": "button tries a refused account without spacing",
+    "file": "src/app.js",
+    "from": "      if (recent) {",
+    "to": "      if (false) {"
+  },
+  {
+    "name": "new credentials wait 15 minutes",
+    "file": "src/app.js",
+    "from": "(this.soon ? MIN_GAP : READ_INTERVAL)",
+    "to": "READ_INTERVAL"
+  },
+  {
+    "name": "token kept past its end",
+    "file": "src/app.js",
+    "from": "mono < this.token.until",
+    "to": "true"
+  },
+  {
+    "name": "intervals not ended published",
+    "file": "src/app.js",
+    "from": "if (t + SLOT > wall + SKEW || t < wall - KEEP) continue;",
+    "to": "if (t < wall - KEEP) continue;"
+  },
+  {
+    "name": "unknown price kept",
+    "file": "src/ercot.js",
+    "from": "if (p === undefined || p < PRICE_MIN || p > PRICE_MAX) continue;",
+    "to": "if (p < PRICE_MIN || p > PRICE_MAX) continue;"
+  },
+  {
+    "name": "conflicting prices kept",
+    "file": "src/ercot.js",
+    "from": "  for (const t of conflicts) prices.delete(t);",
+    "to": ""
+  },
+  {
+    "name": "other settlement point type read",
+    "file": "src/ercot.js",
+    "from": "    if (read(row, 'settlementPointType') !== POINT_TYPE) continue;",
+    "to": ""
+  },
+  {
+    "name": "DSTFlag ignored in autumn",
+    "file": "src/time.js",
+    "from": "      index = 2;",
+    "to": "      index = 1;"
+  },
+  {
+    "name": "spring hour misread",
+    "file": "src/time.js",
+    "from": "hourEnding <= 1 ? 0 : hourEnding <= 3 ? 1 : hourEnding - 2",
+    "to": "hourEnding - 1"
+  },
+  {
+    "name": "sensor republished",
+    "file": "src/app.js",
+    "from": "if (!last || last.t <= entry.state_t) return;",
+    "to": "if (!last) return;"
+  },
+  {
+    "name": "stale sensor published",
+    "file": "src/app.js",
+    "from": "if (age > MAX_STATE_AGE || age < -SKEW) return;",
+    "to": "if (age < -SKEW) return;"
+  },
+  {
+    "name": "late sensor not dated",
+    "file": "src/app.js",
+    "from": "if (age > LIVE_LAG) state.created_at",
+    "to": "if (false) state.created_at"
+  },
+  {
+    "name": "pending entries dropped on any error",
+    "file": "src/app.js",
+    "from": "        if (status === 403 || status === 400) {\n          // Not ours",
+    "to": "        if (true) {\n          // Not ours"
+  },
+  {
+    "name": "a stop counted as a failure",
+    "file": "src/app.js",
+    "from": "    if (abort.signal.aborted) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "getConfig not retried",
+    "file": "src/app.js",
+    "from": "() => this.connected().catch(() => {})",
+    "to": "() => {}"
+  },
+  {
+    "name": "credentials put in the URL",
+    "file": "src/http.js",
+    "from": "      init.body = new URLSearchParams(form).toString();",
+    "to": "      init.body = '';\n      url = `${url}?${new URLSearchParams(form)}`;"
+  },
+  {
+    "name": "redirect followed",
+    "file": "src/http.js",
+    "from": "      redirect: 'manual',",
+    "to": "      redirect: 'follow',"
+  },
+  {
+    "name": "body not bounded",
+    "file": "src/http.js",
+    "from": "    if (size > limit) {",
+    "to": "    if (false) {"
+  },
+  {
+    "name": "one zone failure stops the cycle",
+    "file": "src/app.js",
+    "from": "const stopsCycle = (reason) => !['answer', 'http'].includes(reason);",
+    "to": "const stopsCycle = () => true;"
+  },
+  {
+    "name": "config CR/LF accepted",
+    "file": "src/config.js",
+    "from": "  else if (CONTROL.test(password) || password.length > 256) config.error = 'password_invalid';",
+    "to": ""
+  },
+  {
+    "name": "a cycle due during a cycle is lost",
+    "file": "src/app.js",
+    "from": "      if (this.reading) {\n        // Due while",
+    "to": "      if (false) {\n        // Due while"
+  }
+]
