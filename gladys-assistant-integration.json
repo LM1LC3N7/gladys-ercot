@@ -6,8 +6,8 @@
     "en": "Unofficial. ERCOT (Texas) real-time load zone prices for Gladys energy contracts.",
     "fr": "Non officiel. Prix temps réel ERCOT (Texas) par zone, pour les contrats d'énergie Gladys."
   },
-  "version": "0.1.0",
-  "docker_image": "ghcr.io/lm1lc3n7/gladys-ercot:0.1.0",
+  "version": "0.1.1",
+  "docker_image": "ghcr.io/lm1lc3n7/gladys-ercot:0.1.1",
   "gladys_version": ">=5.3.0",
   "cover_image": "https://raw.githubusercontent.com/LM1LC3N7/gladys-ercot/main/cover.png",
   "categories": ["energy"],

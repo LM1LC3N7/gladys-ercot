@@ -6,6 +6,8 @@ uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-11-14
+
 ### Added
 
 - ERCOT real-time Settlement Point Prices (report NP6-905-CD) of the Houston, North, South and West load
@@ -18,3 +20,6 @@ uses [semantic versioning](https://semver.org/).
   5.3.0 or later.
 - One cycle every 15 minutes at most, kept across restarts; pauses on errors and `Retry-After`; a refused
   login or subscription key is never tried again by itself.
+
+[Unreleased]: https://github.com/LM1LC3N7/gladys-ercot/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/LM1LC3N7/gladys-ercot/releases/tag/v0.1.1
