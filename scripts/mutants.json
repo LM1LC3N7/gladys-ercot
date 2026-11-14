@@ -412,5 +412,23 @@
     "file": "src/app.js",
     "from": "if (this.attemptMono === undefined && isTime(this.state.attempt_at)) {",
     "to": "if (isTime(this.state.attempt_at)) {"
+  },
+  {
+    "name": "r2 N10 calendar reason kept after a success",
+    "file": "src/app.js",
+    "from": "        this.calendarIssues.delete(key);",
+    "to": ""
+  },
+  {
+    "name": "calendar reasons kept across configurations",
+    "file": "src/app.js",
+    "from": "    this.calendarIssues.clear();",
+    "to": ""
+  },
+  {
+    "name": "refusal kept although ERCOT answered",
+    "file": "src/app.js",
+    "from": "      // ERCOT answered every zone: the token and the key were accepted.\n      state.refused = null;",
+    "to": ""
   }
 ]

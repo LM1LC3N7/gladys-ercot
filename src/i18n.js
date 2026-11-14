@@ -138,13 +138,17 @@ export const T = {
         l === 'fr'
           ? `Prix temps réel lus (${list}), dernier intervalle ${at(latest, l)}`
           : `Real-time prices read (${list}), last interval ${at(latest, l)}`;
-      // A calendar Gladys does not take is said first: the contracts need it.
-      for (const [key, why] of calendars) {
-        const owned = why === 'owned';
-        text =
+      // The calendars Gladys does not take, in a compact form after the price.
+      for (const why of ['owned', 'refused']) {
+        const zones = calendars
+          .filter(([, w]) => w === why)
+          .map(([key]) => key.replace('spot-ercot-rt-lz-', ''));
+        if (zones.length === 0) continue;
+        const list = zones.join(', ');
+        text +=
           l === 'fr'
-            ? `Calendrier ${key} non alimenté (${owned ? 'tenu par une autre intégration' : 'refusé par Gladys'}). ${text}`
-            : `Calendar ${key} not fed (${owned ? 'owned by another integration' : 'refused by Gladys'}). ${text}`;
+            ? `. Calendriers non alimentés (${why === 'owned' ? 'autre intégration' : 'refusés par Gladys'}) : ${list}`
+            : `. Calendars not fed (${why === 'owned' ? 'other integration' : 'refused by Gladys'}): ${list}`;
       }
       if (!partial) return text;
       return l === 'fr'

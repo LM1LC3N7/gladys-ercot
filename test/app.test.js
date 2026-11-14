@@ -524,8 +524,50 @@ test('calendar: a failed publication is sent again, a refused key is not', async
   assert.equal(logger.lines.filter((l) => /belongs to another integration/.test(l)).length, 1);
   assert.match(
     statusText(gladys),
-    /Calendar spot-ercot-rt-lz-houston not fed \(owned by another integration\)/,
+    /Real-time prices read .*\. Calendars not fed \(other integration\): houston"/,
   );
+  // Accepted again: the reason goes away.
+  fail = 0;
+  await clock.advance(15 * MINUTE);
+  assert.doesNotMatch(statusText(gladys), /not fed/);
+});
+
+test('calendar status: compact with every zone refused, the price kept; cleared by a new configuration', async (t) => {
+  const all = { ...CONFIG, zones: ZONE_KEYS };
+  const { app, gladys } = setup(t, { config: all });
+  t.mock.method(gladys, 'publishEnergyCalendar', async () => {
+    const err = new Error('owned');
+    err.status = 403;
+    throw err;
+  });
+  await app.start(all);
+  await app.reading;
+  const message = status(gladys).message;
+  assert.match(
+    message.en,
+    /^Real-time prices read \(LZ_HOUSTON, LZ_NORTH, LZ_SOUTH, LZ_WEST\), last interval/,
+  );
+  assert.match(message.en, /Calendars not fed \(other integration\): houston, north, south, west$/);
+  assert.match(
+    message.fr,
+    /Calendriers non alimentés \(autre intégration\) : houston, north, south, west$/,
+  );
+  assert.ok(message.en.length <= 200 && message.fr.length <= 200);
+  await app.start(CONFIG);
+  assert.doesNotMatch(statusText(gladys), /not fed/);
+});
+
+test('refused, then a click: ERCOT answers but unreadably, the refusal is lifted, the real cause said', async (t) => {
+  const { app, gladys, clock, ercot, dataDir } = setup(t);
+  ercot.token = () => json({ error: 'invalid_grant' }, 400);
+  await app.start(CONFIG);
+  await app.reading;
+  await clock.advance(MINUTE);
+  ercot.token = () => json(TOKEN_ANSWER());
+  ercot.prices = () => new Response('not json', { status: 200 });
+  const ack = await gladys.fake.action(ACTION_TEST, {});
+  assert.match(ack.data.message.en, /Read failed \(unreadable answer or unexpected format\)/);
+  assert.equal(readData(dataDir).refused, null);
 });
 
 test('calendar entries: aligned, ended, within the host window, never a text', async (t) => {

@@ -179,6 +179,7 @@ export class ErcotApp {
     this.lastError = undefined;
     this.partial = undefined;
     this.calendarWarned.clear();
+    this.calendarIssues.clear();
     if (this.config.error) {
       await this.setStatus(false, T.configError(this.config.error));
       return;
@@ -451,6 +452,8 @@ export class ErcotApp {
       // the real cause in the status, the normal pace, no pause.
       state.pause_until = 0;
       this.pauseMono = undefined;
+      // ERCOT answered every zone: the token and the key were accepted.
+      state.refused = null;
       this.lastError = failure.reason;
       this.logger.warn(`No zone read: ${failure.reason}`);
     } else if (failure) {
