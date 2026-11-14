@@ -6,7 +6,7 @@
 // not an empty one: `load()` says so and the caller retries on its own timer.
 // -----------------------------------------------------------------------------
 
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import * as fsp from 'node:fs/promises';
 import { join } from 'node:path';
 import { DATA_TIMEOUT } from './constants.js';
 
@@ -21,7 +21,9 @@ function bounded(promise, ms, timers) {
 }
 
 export class Store {
-  constructor({ dataDir, timers, timeout = DATA_TIMEOUT }) {
+  /** `fs` (mkdir, readFile, writeFile, rename) is replaced by the tests only. */
+  constructor({ dataDir, timers, timeout = DATA_TIMEOUT, fs = fsp }) {
+    this.fs = fs;
     this.dataDir = dataDir;
     this.timers = timers;
     this.timeout = timeout;
@@ -43,7 +45,11 @@ export class Store {
     return this.run(async () => {
       let text;
       try {
-        text = await bounded(readFile(join(this.dataDir, FILE), 'utf8'), this.timeout, this.timers);
+        text = await bounded(
+          this.fs.readFile(join(this.dataDir, FILE), 'utf8'),
+          this.timeout,
+          this.timers,
+        );
       } catch (err) {
         if (err.code === 'ENOENT') {
           return { ok: true, state: {} };
@@ -73,9 +79,9 @@ export class Store {
       }
       const path = join(this.dataDir, FILE);
       const work = (async () => {
-        await mkdir(this.dataDir, { recursive: true });
-        await writeFile(`${path}.tmp`, text);
-        await rename(`${path}.tmp`, path);
+        await this.fs.mkdir(this.dataDir, { recursive: true });
+        await this.fs.writeFile(`${path}.tmp`, text);
+        await this.fs.rename(`${path}.tmp`, path);
       })();
       try {
         await bounded(work, this.timeout, this.timers);

@@ -110,13 +110,13 @@
   {
     "name": "button ignores the pause",
     "file": "src/app.js",
-    "from": "} else if (this.state.pause_until > this.now()) {",
+    "from": "} else if (this.pauseMono !== undefined && this.monotonic() < this.pauseMono) {",
     "to": "} else if (false) {"
   },
   {
     "name": "button tries a refused account without spacing",
     "file": "src/app.js",
-    "from": "      if (recent) {",
+    "from": "      if (since < MIN_GAP) {",
     "to": "      if (false) {"
   },
   {
@@ -134,8 +134,8 @@
   {
     "name": "intervals not ended published",
     "file": "src/app.js",
-    "from": "if (t + SLOT > wall + SKEW || t < wall - KEEP) continue;",
-    "to": "if (t < wall - KEEP) continue;"
+    "from": "      if (t + SLOT > wall + SKEW) continue;",
+    "to": ""
   },
   {
     "name": "unknown price kept",
@@ -238,5 +238,179 @@
     "file": "src/app.js",
     "from": "      if (this.reading) {\n        // Due while",
     "to": "      if (false) {\n        // Due while"
+  },
+  {
+    "name": "r1 R1 price bounds removed",
+    "file": "src/ercot.js",
+    "from": "if (p === undefined || p < PRICE_MIN || p > PRICE_MAX) continue;",
+    "to": "if (p === undefined) continue;"
+  },
+  {
+    "name": "r1 R2 unit x1000",
+    "file": "src/app.js",
+    "from": "price: Math.round(p * 100) / 100_000,",
+    "to": "price: Math.round(p * 100) / 100,"
+  },
+  {
+    "name": "r1 R3 strictNumber loose",
+    "file": "src/ercot.js",
+    "from": "return /^-?\\d{1,7}(\\.\\d{1,6})?$/.test(text) ? Number(text) : undefined;",
+    "to": "return Number(text);"
+  },
+  {
+    "name": "r1 R4 token of other credentials reused",
+    "file": "src/app.js",
+    "from": "this.token && this.token.key === this.credKey && mono < this.token.until",
+    "to": "this.token && mono < this.token.until"
+  },
+  {
+    "name": "r1 R5 token kept on new credentials (run with R4 applied too)",
+    "file": "src/app.js",
+    "from": "if (key !== previousKey) this.token = undefined;",
+    "to": ""
+  },
+  {
+    "name": "r1 R6 unreadable DSTFlag read as false",
+    "file": "src/ercot.js",
+    "from": "if (repeated === undefined) continue;",
+    "to": ""
+  },
+  {
+    "name": "r1 R7 envelope of another report accepted",
+    "file": "src/ercot.js",
+    "from": "if (emil !== undefined && String(emil).toUpperCase() !== SPP_REPORT) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "r1 R8 id_token not checked",
+    "file": "src/ercot.js",
+    "from": "if (typeof token !== 'string' || token.length > MAX_TOKEN_LENGTH || !TOKEN.test(token)) {",
+    "to": "if (typeof token !== 'string') {"
+  },
+  {
+    "name": "r1 R9 expires_in not bounded",
+    "file": "src/ercot.js",
+    "from": "lifetime: Math.min(3600, Math.max(300, seconds)) * 1000",
+    "to": "lifetime: seconds * 1000"
+  },
+  {
+    "name": "r1 R10 backfill unbounded",
+    "file": "src/app.js",
+    "from": "const fromT = Math.max(wall - BACKFILL, lastKnown === undefined ? wall - BACKFILL : lastKnown);",
+    "to": "const fromT = lastKnown === undefined ? wall - BACKFILL : lastKnown;"
+  },
+  {
+    "name": "r1 R11 /data slot not aligned accepted",
+    "file": "src/app.js",
+    "from": "s[0] % SLOT === 0 &&",
+    "to": ""
+  },
+  {
+    "name": "r1 R12 future /data slot accepted",
+    "file": "src/app.js",
+    "from": "s[0] <= wall + SKEW &&",
+    "to": ""
+  },
+  {
+    "name": "r1 R13 sensor from the future",
+    "file": "src/app.js",
+    "from": "if (age > MAX_STATE_AGE || age < -SKEW) return;",
+    "to": "if (age > MAX_STATE_AGE) return;"
+  },
+  {
+    "name": "r1 R15 slow write overwritten",
+    "file": "src/store.js",
+    "from": "      if (this.slowWrite) {",
+    "to": "      if (false) {"
+  },
+  {
+    "name": "r1 R16 content-length not checked",
+    "file": "src/http.js",
+    "from": "if (Number.isFinite(declared) && declared > limit) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "r1 R17 Retry-After date against our clock",
+    "file": "src/http.js",
+    "from": "const at = date ? Date.parse(date) : NaN;",
+    "to": "const at = Date.now();"
+  },
+  {
+    "name": "r1 R18 no generation check after save",
+    "file": "src/app.js",
+    "from": "    if (generation !== this.generation) return;\n    if (!saved) {",
+    "to": "    if (!saved) {"
+  },
+  {
+    "name": "r1 R19 password control char accepted",
+    "file": "src/config.js",
+    "from": "else if (CONTROL.test(password) || password.length > 256) config.error = 'password_invalid';",
+    "to": ""
+  },
+  {
+    "name": "r1 R20 key format not checked",
+    "file": "src/config.js",
+    "from": "else if (!/^[A-Za-z0-9]{16,128}$/.test(key)) config.error = 'key_invalid';",
+    "to": ""
+  },
+  {
+    "name": "r1 R21 Retry-After ignored on top of backoff",
+    "file": "src/app.js",
+    "from": "wait = Math.min(PAUSE_MAX, Math.max(PAUSE_MIN, wait, asked));",
+    "to": "wait = Math.min(PAUSE_MAX, Math.max(PAUSE_MIN, wait));"
+  },
+  {
+    "name": "r1 R23 partial ignored",
+    "file": "src/app.js",
+    "from": "          this.partial = reason;",
+    "to": ""
+  },
+  {
+    "name": "r1 R25 user name CR/LF accepted",
+    "file": "src/config.js",
+    "from": "else if (CONTROL.test(username) || username.length > 256) config.error = 'username_invalid';",
+    "to": ""
+  },
+  {
+    "name": "r1 R14 prices beyond KEEP kept (the one filter)",
+    "file": "src/app.js",
+    "from": ".filter((s) => s.t >= wall - KEEP)",
+    "to": ""
+  },
+  {
+    "name": "all zones unreadable counted as a success",
+    "file": "src/app.js",
+    "from": "if (read === 0 && this.partial) return { failure: { reason: this.partial, soft: true } };",
+    "to": ""
+  },
+  {
+    "name": "an answer without any price accepted",
+    "file": "src/ercot.js",
+    "from": "if (slots.length === 0) throw new AnswerError('no readable price in the answer');",
+    "to": ""
+  },
+  {
+    "name": "unreadable rows not logged",
+    "file": "src/app.js",
+    "from": "if (dropped > 0 && !this.rowsWarned.has(zone)) {",
+    "to": "if (false) {"
+  },
+  {
+    "name": "calendar not fed hidden from the status",
+    "file": "src/app.js",
+    "from": "this.calendarIssues.set(key, status === 403 ? 'owned' : 'refused');",
+    "to": ""
+  },
+  {
+    "name": "status not sent again at a reconnection",
+    "file": "src/app.js",
+    "from": "    this.lastStatus = undefined;\n    this.timers.clearTimeout(this.configTimer);",
+    "to": "    this.timers.clearTimeout(this.configTimer);"
+  },
+  {
+    "name": "pace on the wall clock again at each load",
+    "file": "src/app.js",
+    "from": "if (this.attemptMono === undefined && isTime(this.state.attempt_at)) {",
+    "to": "if (isTime(this.state.attempt_at)) {"
   }
 ]

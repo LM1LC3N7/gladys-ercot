@@ -48,6 +48,13 @@ memory only and never writes the password, the key or the token, nor logs them.
   its price came is computed with the fallback, then corrected when the price arrives (Gladys recomputes
   the costs that read a changed calendar value). Gladys shows a warning on its Jobs page each time the
   fallback is used.
+- **Negative and extreme prices.** A negative real-time price is published as it is (−250 $/MWh =
+  −0.25 USD/kWh): the engine counts that interval as a credit that lowers the bill, the tax included.
+  ERCOT's cap of 5,000 $/MWh (5 USD/kWh) is kept. A value beyond ±10,000 $/MWh is taken as unreadable:
+  that interval stays unknown and the fallback price applies. The adder may be negative; the fallback
+  price may not (Gladys refuses a negative fallback).
+- **The fallback price replaces the ERCOT price and the adder** for an interval without a price; the tax
+  still applies to it. It is required: the contract cannot be saved without it.
 - **A missing price is never guessed**: an interval that ERCOT gives without a readable number (empty,
   text) is left out of the calendar; it is never 0.
 - The template is the simple shape of a wholesale-indexed plan (price + adder + monthly charges + tax);
@@ -62,7 +69,7 @@ memory only and never writes the password, the key or the token, nor logs them.
   far under the 30 requests per minute ERCOT allows. The time of each cycle is written to `/data` before
   its first request, so a restart or a new configuration keeps the pace.
 - Errors (no answer, HTTP 5xx, 403) pause the reads 15 minutes, then 30, 60... up to 6 hours. An HTTP 429
-  pauses them the same way, longer if its `Retry-After` asks (6 hours at most). A pause is kept across restarts
+  or 5xx pauses them the same way, longer if its `Retry-After` asks (6 hours at most). A pause is kept across restarts
   and applies to the button too.
 - An HTTP 403 usually means the request came from outside the USA: it is a failure, not a refusal.
 - An HTTP 401 that does not name the subscription key: the token is renewed once and the zone read again;
@@ -72,7 +79,11 @@ memory only and never writes the password, the key or the token, nor logs them.
   again by itself, even after a restart (it keeps 8 bits of a salted hash of them in `/data`: nothing to
   find them back from). New credentials are tried within a minute. The **Test the connection** button
   tries the account again (once a minute at most) and lifts the refusal if ERCOT accepts.
-- An unreadable answer for one zone does not stop the other zones.
+- An unreadable answer for one zone does not stop the other zones. When no zone gives a readable price
+  (an unexpected format), the status says so (not connected, "unreadable answer or unexpected format")
+  and the reads go on every 15 minutes; rows that could not be read are logged once per zone.
+- A calendar Gladys does not take (its key held by another integration, or refused) is named in the
+  status.
 - `/data` unreadable or not writable: nothing is read until it is fixed (retried every 10 seconds).
 
 ## Not included

@@ -179,8 +179,8 @@
               "fr": "Supplément par kWh"
             },
             "description": {
-              "en": "Added to every real-time price: your retailer margin and the per-kWh delivery charges, if you want them counted.",
-              "fr": "Ajouté à chaque prix temps réel : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
+              "en": "Added to every real-time price (may be negative): your retailer margin and the per-kWh delivery charges, if you want them counted.",
+              "fr": "Ajouté à chaque prix temps réel (peut être négatif) : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
             }
           },
           {
@@ -220,9 +220,10 @@
               "fr": "Prix quand aucun prix ERCOT n'est connu"
             },
             "description": {
-              "en": "Your choice, no default: used for an interval whose real-time price is not published yet (the current one) or was never read. Gladys warns on the Jobs page each time.",
-              "fr": "À vous de le choisir, sans valeur par défaut : utilisé pour un intervalle dont le prix temps réel n'est pas encore publié (l'intervalle en cours) ou n'a jamais été lu. Gladys l'indique à chaque fois sur la page des tâches."
-            }
+              "en": "Your choice, 0 or more: replaces the ERCOT price AND the adder for an interval without a published price (the running one, or one never read); the tax still applies. Gladys warns on its Jobs page.",
+              "fr": "À vous de le choisir, 0 ou plus : remplace le prix ERCOT ET le supplément pour un intervalle sans prix publié (celui en cours, ou jamais lu) ; la taxe s'y applique. Gladys le signale sur sa page des tâches."
+            },
+            "required": true
           }
         ],
         "tariff": {
@@ -289,8 +290,8 @@
               "fr": "Supplément par kWh"
             },
             "description": {
-              "en": "Added to every real-time price: your retailer margin and the per-kWh delivery charges, if you want them counted.",
-              "fr": "Ajouté à chaque prix temps réel : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
+              "en": "Added to every real-time price (may be negative): your retailer margin and the per-kWh delivery charges, if you want them counted.",
+              "fr": "Ajouté à chaque prix temps réel (peut être négatif) : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
             }
           },
           {
@@ -330,9 +331,10 @@
               "fr": "Prix quand aucun prix ERCOT n'est connu"
             },
             "description": {
-              "en": "Your choice, no default: used for an interval whose real-time price is not published yet (the current one) or was never read. Gladys warns on the Jobs page each time.",
-              "fr": "À vous de le choisir, sans valeur par défaut : utilisé pour un intervalle dont le prix temps réel n'est pas encore publié (l'intervalle en cours) ou n'a jamais été lu. Gladys l'indique à chaque fois sur la page des tâches."
-            }
+              "en": "Your choice, 0 or more: replaces the ERCOT price AND the adder for an interval without a published price (the running one, or one never read); the tax still applies. Gladys warns on its Jobs page.",
+              "fr": "À vous de le choisir, 0 ou plus : remplace le prix ERCOT ET le supplément pour un intervalle sans prix publié (celui en cours, ou jamais lu) ; la taxe s'y applique. Gladys le signale sur sa page des tâches."
+            },
+            "required": true
           }
         ],
         "tariff": {
@@ -399,8 +401,8 @@
               "fr": "Supplément par kWh"
             },
             "description": {
-              "en": "Added to every real-time price: your retailer margin and the per-kWh delivery charges, if you want them counted.",
-              "fr": "Ajouté à chaque prix temps réel : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
+              "en": "Added to every real-time price (may be negative): your retailer margin and the per-kWh delivery charges, if you want them counted.",
+              "fr": "Ajouté à chaque prix temps réel (peut être négatif) : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
             }
           },
           {
@@ -440,9 +442,10 @@
               "fr": "Prix quand aucun prix ERCOT n'est connu"
             },
             "description": {
-              "en": "Your choice, no default: used for an interval whose real-time price is not published yet (the current one) or was never read. Gladys warns on the Jobs page each time.",
-              "fr": "À vous de le choisir, sans valeur par défaut : utilisé pour un intervalle dont le prix temps réel n'est pas encore publié (l'intervalle en cours) ou n'a jamais été lu. Gladys l'indique à chaque fois sur la page des tâches."
-            }
+              "en": "Your choice, 0 or more: replaces the ERCOT price AND the adder for an interval without a published price (the running one, or one never read); the tax still applies. Gladys warns on its Jobs page.",
+              "fr": "À vous de le choisir, 0 ou plus : remplace le prix ERCOT ET le supplément pour un intervalle sans prix publié (celui en cours, ou jamais lu) ; la taxe s'y applique. Gladys le signale sur sa page des tâches."
+            },
+            "required": true
           }
         ],
         "tariff": {
@@ -509,8 +512,8 @@
               "fr": "Supplément par kWh"
             },
             "description": {
-              "en": "Added to every real-time price: your retailer margin and the per-kWh delivery charges, if you want them counted.",
-              "fr": "Ajouté à chaque prix temps réel : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
+              "en": "Added to every real-time price (may be negative): your retailer margin and the per-kWh delivery charges, if you want them counted.",
+              "fr": "Ajouté à chaque prix temps réel (peut être négatif) : la marge de votre fournisseur et les frais d'acheminement au kWh, si vous voulez les compter."
             }
           },
           {
@@ -550,9 +553,10 @@
               "fr": "Prix quand aucun prix ERCOT n'est connu"
             },
             "description": {
-              "en": "Your choice, no default: used for an interval whose real-time price is not published yet (the current one) or was never read. Gladys warns on the Jobs page each time.",
-              "fr": "À vous de le choisir, sans valeur par défaut : utilisé pour un intervalle dont le prix temps réel n'est pas encore publié (l'intervalle en cours) ou n'a jamais été lu. Gladys l'indique à chaque fois sur la page des tâches."
-            }
+              "en": "Your choice, 0 or more: replaces the ERCOT price AND the adder for an interval without a published price (the running one, or one never read); the tax still applies. Gladys warns on its Jobs page.",
+              "fr": "À vous de le choisir, 0 ou plus : remplace le prix ERCOT ET le supplément pour un intervalle sans prix publié (celui en cours, ou jamais lu) ; la taxe s'y applique. Gladys le signale sur sa page des tâches."
+            },
+            "required": true
           }
         ],
         "tariff": {

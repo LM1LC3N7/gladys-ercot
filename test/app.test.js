@@ -481,7 +481,10 @@ test('one zone unreadable: the other one is read and published', async (t) => {
   assert.equal(gladys.fake.energyCalendars[calendarKey('houston')].length, 0);
   assert.ok(gladys.fake.energyCalendars[calendarKey('north')].length > 200);
   assert.equal(status(gladys).connected, true);
-  assert.match(statusText(gladys), /last read incomplete \(unreadable answer\)/);
+  assert.match(
+    statusText(gladys),
+    /last read incomplete \(unreadable answer or unexpected format\)/,
+  );
 });
 
 test('calendar: a failed publication is sent again, a refused key is not', async (t) => {
@@ -519,6 +522,10 @@ test('calendar: a failed publication is sent again, a refused key is not', async
   await clock.advance(15 * MINUTE);
   assert.ok(sent.length - count <= 2, 'the refused entries are not sent again');
   assert.equal(logger.lines.filter((l) => /belongs to another integration/.test(l)).length, 1);
+  assert.match(
+    statusText(gladys),
+    /Calendar spot-ercot-rt-lz-houston not fed \(owned by another integration\)/,
+  );
 });
 
 test('calendar entries: aligned, ended, within the host window, never a text', async (t) => {
@@ -785,4 +792,238 @@ test('a timer firing early does not read early (monotonic check)', async (t) => 
   assert.equal(ercot.priceCalls().length, 2, 'the timer re-arms itself');
   await clock.advance(15 * MINUTE + 1000);
   assert.equal(ercot.priceCalls().length, 4);
+});
+
+test('every zone without a readable price: not connected, the real cause, the 15-minute pace', async (t) => {
+  const breaks = [
+    () => new Response('not json', { status: 200 }),
+    () => json({ ...report([]), data: {} }),
+    (call, point, clock) => {
+      const rows = rowsUntil(localMidnight(call.params.deliveryDateFrom), clock.now(), point);
+      return json(report(rows.map((r) => [r[0], '01:00', ...r.slice(2)])));
+    },
+  ];
+  for (const broken of breaks) {
+    const { app, gladys, clock, ercot, logger, dataDir } = setup(t);
+    await app.start(CONFIG);
+    await app.reading;
+    assert.equal(status(gladys).connected, true);
+    ercot.prices = (call, point) => broken(call, point, clock);
+    await clock.advance(15 * MINUTE + 1000);
+    assert.equal(status(gladys).connected, false);
+    assert.match(statusText(gladys), /Read failed \(unreadable answer or unexpected format\)/);
+    assert.ok(logger.lines.some((l) => /No zone read: answer/.test(l)));
+    const before = ercot.priceCalls().length;
+    await clock.advance(15 * MINUTE);
+    assert.equal(ercot.priceCalls().length, before + 2, 'the pace goes on, no pause');
+    assert.equal(readData(dataDir).pause_until, 0);
+    await app.stop();
+  }
+});
+
+test('some rows unreadable: left out, logged once per zone', async (t) => {
+  const { app, clock, ercot, logger } = setup(t);
+  ercot.prices = (call, point) => {
+    const rows = rowsUntil(localMidnight(call.params.deliveryDateFrom), clock.now(), point);
+    rows[5][5] = 'N/A';
+    rows[6][1] = '01:00';
+    return json(report(rows));
+  };
+  await app.start(CONFIG);
+  await app.reading;
+  await clock.advance(15 * MINUTE + 1000);
+  const lines = logger.lines.filter((l) => /price rows unreadable/.test(l));
+  assert.deepEqual(lines, [
+    'warn 2 houston price rows unreadable, left out',
+    'warn 2 north price rows unreadable, left out',
+  ]);
+});
+
+test('negative prices are published as they are, the 5,000 $/MWh cap kept', async (t) => {
+  const { app, gladys, clock, ercot } = setup(t);
+  ercot.prices = (call, point) => {
+    const rows = rowsUntil(localMidnight(call.params.deliveryDateFrom), clock.now(), point);
+    rows.at(-1)[5] = -250;
+    rows.at(-2)[5] = 5000;
+    rows.at(-3)[5] = 10_000.01;
+    return json(report(rows));
+  };
+  await app.start(CONFIG);
+  await app.reading;
+  const entries = gladys.fake.energyCalendars[calendarKey('houston')];
+  const at = (iso) => entries.find((e) => e.starts_at === iso)?.value;
+  assert.equal(at('2026-11-14T17:45:00.000Z'), -0.25);
+  assert.equal(at('2026-11-14T17:30:00.000Z'), 5);
+  assert.equal(at('2026-11-14T17:15:00.000Z'), undefined, 'beyond 10,000: unknown');
+  assert.equal(gladys.fake.lastState(PRICE('houston')), -250);
+});
+
+test('new credentials: the token of the old ones is dropped and never used', async (t) => {
+  const { app, clock, ercot } = setup(t);
+  await app.start(CONFIG);
+  await app.reading;
+  assert.ok(app.token);
+  await app.start({ ...CONFIG, password: 'a new one' });
+  assert.equal(app.token, undefined, 'not kept in memory');
+  await clock.advance(15 * MINUTE + 1000);
+  const tokens = ercot.tokenCalls();
+  assert.equal(tokens.length, 2);
+  assert.equal(tokens[1].form.password, 'a new one');
+  assert.equal(ercot.priceCalls().at(-1).init.headers.Authorization, 'Bearer eyJ.idtoken2.sig');
+});
+
+test('a token of other credentials is not used, even if it is still in memory', async (t) => {
+  const { app, clock, ercot } = setup(t);
+  await app.start(CONFIG);
+  await app.reading;
+  const old = app.token;
+  await app.start({ ...CONFIG, subscription_key: 'fedcba9876543210fedcba9876543210' });
+  app.token = old;
+  await clock.advance(15 * MINUTE + 1000);
+  assert.equal(ercot.tokenCalls().length, 2);
+});
+
+test('a stop during the attempt write: nothing is sent afterwards', async (t) => {
+  const { app, clock, ercot } = setup(t);
+  let release;
+  const real = app.store.save.bind(app.store);
+  t.mock.method(app.store, 'save', async (state) => {
+    await new Promise((resolve) => {
+      release = resolve;
+    });
+    return real(state);
+  });
+  clock.waitFor = undefined;
+  const started = app.start(CONFIG);
+  await until(() => release);
+  const stopped = app.stop();
+  release();
+  await started;
+  await stopped;
+  await clock.advance(HOUR);
+  assert.equal(ercot.calls().length, 0);
+});
+
+test('/data slots: unaligned or future ones are not read back', async (t) => {
+  const dataDir = tempDir(t);
+  const slot = Date.parse('2026-11-14T17:00:00Z');
+  writeFileSync(
+    join(dataDir, 'state.json'),
+    JSON.stringify({
+      v: 1,
+      attempt_at: START - MINUTE,
+      zones: {
+        houston: {
+          slots: [
+            [slot, 10],
+            [slot + 60_000, 11],
+            [START + 2 * HOUR - (START % SLOT), 12],
+          ],
+          state_t: 0,
+        },
+      },
+    }),
+  );
+  const { app } = setup(t, { dataDir });
+  await app.start(CONFIG);
+  assert.deepEqual(
+    app.state.zones.houston.slots.map((s) => s.t),
+    [slot],
+  );
+});
+
+test('sensor: the running interval read back from /data is never sent', async (t) => {
+  const dataDir = tempDir(t);
+  const running = START - (START % SLOT);
+  writeFileSync(
+    join(dataDir, 'state.json'),
+    JSON.stringify({
+      v: 1,
+      attempt_at: START - HOUR,
+      zones: { houston: { slots: [[running, 77.5]], state_t: 0 } },
+    }),
+  );
+  const { app, gladys, ercot } = setup(t, { dataDir });
+  ercot.prices = (call, point) =>
+    json(report(rowsUntil(localMidnight(call.params.deliveryDateFrom), START - HOUR, point)));
+  await app.start(CONFIG);
+  await app.reading;
+  const states = gladys.fake.states.filter(
+    (s) => s.device_feature_external_id === PRICE('houston'),
+  );
+  assert.ok(
+    states.every((s) => s.state !== 77.5),
+    'an interval not ended is not a price',
+  );
+});
+
+test('after an outage longer than 3 days, the read goes 3 days back, no more', async (t) => {
+  const { app, clock, ercot } = setup(t);
+  await app.start(CONFIG);
+  await app.reading;
+  ercot.prices = () => new Response('', { status: 503 });
+  await clock.advance(4 * 24 * HOUR);
+  const before = ercot.priceCalls().length;
+  ercot.prices = (call, point) =>
+    json(report(rowsUntil(localMidnight(call.params.deliveryDateFrom), clock.now(), point)));
+  await clock.advance(7 * HOUR);
+  const back = ercot.priceCalls()[before];
+  const wall = Date.parse(back.params.deliveryDateTo + 'T12:00:00Z');
+  assert.ok(
+    back.params.deliveryDateFrom >=
+      new Date(wall - 3 * 24 * HOUR - 24 * HOUR).toISOString().slice(0, 10),
+  );
+  assert.ok(back.params.deliveryDateFrom > '2026-11-14', `from ${back.params.deliveryDateFrom}`);
+});
+
+test('prices older than 3 days are neither kept nor published', async (t) => {
+  const { app, gladys, clock, ercot, dataDir } = setup(t);
+  // An answer that ignores the dates asked: 6 days of prices.
+  ercot.prices = (call, point) =>
+    json(report(rowsUntil(START - 6 * 24 * HOUR, clock.now(), point)));
+  await app.start(CONFIG);
+  await app.reading;
+  const oldest = START - 3 * 24 * HOUR - 1000;
+  const entries = gladys.fake.energyCalendars[calendarKey('houston')];
+  assert.ok(entries.every((e) => Date.parse(e.starts_at) >= oldest));
+  assert.ok(readData(dataDir).zones.houston.slots.every(([t0]) => t0 >= oldest));
+});
+
+test('the wall clock going back during a cycle does not delay the next one', async (t) => {
+  const { app, clock, ercot } = setup(t);
+  ercot.prices = (call, point) => {
+    if (ercot.priceCalls().length === 1) clock.jumpWall(-2 * HOUR);
+    return json(report(rowsUntil(localMidnight(call.params.deliveryDateFrom), clock.now(), point)));
+  };
+  await app.start(CONFIG);
+  await app.reading;
+  await clock.advance(15 * MINUTE + 1000);
+  assert.equal(ercot.priceCalls().length, 4, 'monotonic pace');
+});
+
+test('a reconnection sends the status again (Gladys keeps it in memory only)', async (t) => {
+  const { app, gladys } = setup(t, { config: { ...CONFIG, password: '' } });
+  await app.start({ ...CONFIG, password: '' });
+  const sent = [];
+  t.mock.method(gladys, 'setConnectionStatus', async (...args) => {
+    sent.push(args);
+  });
+  await app.connected();
+  assert.equal(sent.length, 1);
+  assert.match(JSON.stringify(sent[0]), /Enter the password/);
+});
+
+test('a configuration saved after the wall clock went back keeps the monotonic pace', async (t) => {
+  const { app, clock, ercot } = setup(t);
+  await app.start(CONFIG);
+  await app.reading;
+  clock.jumpWall(-2 * HOUR);
+  await clock.advance(10 * MINUTE);
+  await app.start(CONFIG);
+  await clock.advance(5 * MINUTE + 1000);
+  assert.equal(
+    ercot.priceCalls().length,
+    4,
+    '15 minutes after the last attempt, not after the reload',
+  );
 });

@@ -50,6 +50,13 @@ jeton, ni ne les journalise.
   avant l'arrivée de son prix est calculé au prix de repli, puis corrigé quand le prix arrive (Gladys
   recalcule les coûts qui lisaient une valeur de calendrier changée). Gladys le signale sur sa page des
   tâches à chaque usage du prix de repli.
+- **Prix négatifs et extrêmes.** Un prix temps réel négatif est publié tel quel (−250 $/MWh =
+  −0,25 USD/kWh) : le moteur compte cet intervalle comme un crédit qui baisse la facture, taxe comprise.
+  Le plafond d'ERCOT de 5 000 $/MWh (5 USD/kWh) est gardé. Une valeur au-delà de ±10 000 $/MWh est jugée
+  illisible : l'intervalle reste inconnu et le prix de repli s'applique. Le supplément peut être négatif ;
+  le prix de repli ne le peut pas (Gladys refuse un repli négatif).
+- **Le prix de repli remplace le prix ERCOT et le supplément** pour un intervalle sans prix ; la taxe s'y
+  applique. Il est obligatoire : le contrat ne s'enregistre pas sans lui.
 - **Un prix manquant n'est jamais deviné** : un intervalle qu'ERCOT donne sans nombre lisible (vide,
   texte) est laissé hors du calendrier ; il ne vaut jamais 0.
 - Le modèle est la forme simple d'une offre indexée sur le prix de gros (prix + supplément + redevances
@@ -64,8 +71,8 @@ jeton, ni ne les journalise.
   bien sous les 30 requêtes par minute permises par ERCOT. L'heure de chaque cycle est écrite dans `/data`
   avant sa première requête : un redémarrage ou une nouvelle configuration garde le rythme.
 - Les erreurs (pas de réponse, HTTP 5xx, 403) mettent les lectures en pause 15 minutes, puis 30, 60…
-  jusqu'à 6 heures. Un HTTP 429 les met en pause de la même façon, plus longtemps si son `Retry-After` le
-  demande (6 heures au plus). Une pause survit aux redémarrages et vaut aussi pour le bouton.
+  jusqu'à 6 heures. Un HTTP 429 ou 5xx les met en pause de la même façon, plus longtemps si son
+  `Retry-After` le demande (6 heures au plus). Une pause survit aux redémarrages et vaut aussi pour le bouton.
 - Un HTTP 403 signifie en général que la requête venait de hors des États-Unis : c'est un échec, pas un
   refus.
 - Un HTTP 401 qui ne nomme pas la clé d'abonnement : le jeton est renouvelé une fois et la zone relue ; si
@@ -77,7 +84,12 @@ jeton, ni ne les journalise.
   `/data` : de quoi ne rien retrouver). De nouveaux identifiants sont essayés dans la minute. Le bouton
   **Tester la connexion** réessaie le compte (une fois par minute au plus) et lève le refus si ERCOT
   accepte.
-- Une réponse illisible pour une zone n'arrête pas les autres zones.
+- Une réponse illisible pour une zone n'arrête pas les autres zones. Quand aucune zone ne donne de prix
+  lisible (format inattendu), le statut le dit (non connecté, « réponse illisible ou format inattendu ») et
+  les lectures continuent toutes les 15 minutes ; les lignes illisibles sont journalisées une fois par
+  zone.
+- Un calendrier que Gladys ne prend pas (clé tenue par une autre intégration, ou refusé) est nommé dans le
+  statut.
 - `/data` illisible ou non inscriptible : rien n'est lu tant que ce n'est pas réglé (nouvel essai toutes
   les 10 secondes).
 

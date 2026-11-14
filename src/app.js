@@ -113,18 +113,25 @@ export class ErcotApp {
     this.configTimer = undefined;
     this.configDelay = CONFIG_RETRY_MIN;
     this.readDueMono = undefined;
-    this.lastAttemptMono = undefined;
+    // The pace in this process: the monotonic instants of the last attempt
+    // and of the end of a pause (from /data's wall times at the first load only).
+    this.attemptMono = undefined;
+    this.pauseMono = undefined;
     this.soon = false;
     this.lastStatus = undefined;
     this.lastError = undefined;
     this.partial = undefined;
     this.calendarWarned = new Set();
+    this.calendarIssues = new Map();
+    this.rowsWarned = new Set();
   }
 
   // --- Lifecycle -------------------------------------------------------------
 
   /** The `connected` event: read the config, retried without end if it fails. */
   async connected() {
+    // Gladys keeps the statuses in memory only: after its restart, say it again.
+    this.lastStatus = undefined;
     this.timers.clearTimeout(this.configTimer);
     this.configTimer = undefined;
     let raw;
@@ -218,6 +225,16 @@ export class ErcotApp {
       return;
     }
     this.state = this.sanitize(result.state, result.corrupt);
+    // The wall times of /data become monotonic instants once per process:
+    // later, the memory of this process is right even if the wall clock moved.
+    const mono = this.monotonic();
+    const wall = this.now();
+    if (this.attemptMono === undefined && isTime(this.state.attempt_at)) {
+      this.attemptMono = mono - (wall - this.state.attempt_at);
+    }
+    if (this.pauseMono === undefined && this.state.pause_until > wall) {
+      this.pauseMono = mono + (this.state.pause_until - wall);
+    }
     this.scheduleRead();
     await this.updateStatus();
   }
@@ -339,13 +356,13 @@ export class ErcotApp {
   readDelay() {
     const state = this.state;
     if (!state || state.refused || this.config.error) return Infinity;
-    const wall = this.now();
-    let due = 0;
-    if (isTime(state.attempt_at)) {
-      due = state.attempt_at + (this.soon ? MIN_GAP : READ_INTERVAL);
+    const mono = this.monotonic();
+    let due = -Infinity;
+    if (this.attemptMono !== undefined) {
+      due = this.attemptMono + (this.soon ? MIN_GAP : READ_INTERVAL);
     }
-    if (isTime(state.pause_until)) due = Math.max(due, state.pause_until);
-    return Math.min(PAUSE_MAX + READ_INTERVAL, Math.max(0, due - wall));
+    if (this.pauseMono !== undefined) due = Math.max(due, this.pauseMono);
+    return Math.min(PAUSE_MAX + READ_INTERVAL, Math.max(0, due - mono));
   }
 
   scheduleRead() {
@@ -409,7 +426,7 @@ export class ErcotApp {
       return;
     }
     state.attempt_at = Math.max(attemptAt, this.now());
-    this.lastAttemptMono = this.monotonic();
+    this.attemptMono = this.monotonic();
     this.soon = false;
     const abort = new AbortController();
     this.abort = abort;
@@ -423,11 +440,19 @@ export class ErcotApp {
       state.refused = refused;
       state.failures = 0;
       state.pause_until = 0;
+      this.pauseMono = undefined;
       this.token = undefined;
       this.lastError = undefined;
       this.logger.warn(
         `ERCOT refused the ${refused.kind === 'key' ? 'subscription key' : 'login'}`,
       );
+    } else if (failure?.soft) {
+      // Answers read but no price in any of them (a format ERCOT changed?):
+      // the real cause in the status, the normal pace, no pause.
+      state.pause_until = 0;
+      this.pauseMono = undefined;
+      this.lastError = failure.reason;
+      this.logger.warn(`No zone read: ${failure.reason}`);
     } else if (failure) {
       state.failures += 1;
       const max = failure.reason === 'unauthorized' ? MAX_AUTH_BACKOFF : MAX_BACKOFF;
@@ -437,12 +462,14 @@ export class ErcotApp {
         wait = Math.min(PAUSE_MAX, Math.max(PAUSE_MIN, wait, asked));
       }
       state.pause_until = wall + wait;
+      this.pauseMono = this.monotonic() + wait;
       this.lastError = failure.reason;
       this.logger.warn(`Reading ERCOT failed (${failure.reason})`);
     } else {
       // A whole cycle accepted: the credentials work (a refusal is lifted).
       state.failures = 0;
       state.pause_until = 0;
+      this.pauseMono = undefined;
       state.refused = null;
       this.lastError = undefined;
     }
@@ -489,6 +516,7 @@ export class ErcotApp {
    */
   async cycle(signal, generation) {
     this.partial = undefined;
+    let read = 0;
     if (this.token) this.token.fresh = false;
     const refuse = (kind) => {
       const salt = randomBytes(16).toString('hex');
@@ -507,6 +535,7 @@ export class ErcotApp {
         }
         try {
           await this.readZone(zone, token.value, signal);
+          read += 1;
           break;
         } catch (err) {
           if (err instanceof RefusedError) return refuse('key');
@@ -528,6 +557,8 @@ export class ErcotApp {
         }
       }
     }
+    // Every zone unreadable: not a success, whatever the HTTP status said.
+    if (read === 0 && this.partial) return { failure: { reason: this.partial, soft: true } };
     return {};
   }
 
@@ -538,7 +569,7 @@ export class ErcotApp {
     const lastKnown = entry.slots.at(-1)?.t;
     // From the last price known (an outage is caught up), three days at most.
     const fromT = Math.max(wall - BACKFILL, lastKnown === undefined ? wall - BACKFILL : lastKnown);
-    const { slots } = await fetchPrices({
+    const { slots, dropped } = await fetchPrices({
       token,
       key: this.config.key,
       point: ZONES[zone],
@@ -546,10 +577,15 @@ export class ErcotApp {
       to: localDate(wall),
       signal,
     });
+    if (dropped > 0 && !this.rowsWarned.has(zone)) {
+      // Once per zone: some rows of the point could not be read (left out).
+      this.rowsWarned.add(zone);
+      this.logger.warn(`${dropped} ${zone} price rows unreadable, left out`);
+    }
     const known = new Map(entry.slots.map((s) => [s.t, s]));
     for (const { t, p } of slots) {
       // A price of an interval not yet ended is not a real-time price yet.
-      if (t + SLOT > wall + SKEW || t < wall - KEEP) continue;
+      if (t + SLOT > wall + SKEW) continue;
       const old = known.get(t);
       if (!old) known.set(t, { t, p, pending: true });
       else if (old.p !== p) known.set(t, { t, p, pending: true });
@@ -575,11 +611,13 @@ export class ErcotApp {
           })),
         );
         for (const slot of batch) slot.pending = false;
+        this.calendarIssues.delete(key);
       } catch (err) {
         const status = err?.status ?? err?.statusCode;
         if (status === 403 || status === 400) {
           // Not ours (another integration owns the key) or refused: never sent again.
           for (const slot of batch) slot.pending = false;
+          this.calendarIssues.set(key, status === 403 ? 'owned' : 'refused');
         }
         const warned = `${key}:${status}`;
         if (!this.calendarWarned.has(warned)) {
@@ -622,6 +660,7 @@ export class ErcotApp {
           latest: latest + SLOT,
           zones: this.config.zones.map((z) => ZONES[z]),
           partial: this.partial,
+          calendars: [...this.calendarIssues.entries()],
         }),
       ];
     }
@@ -644,21 +683,12 @@ export class ErcotApp {
     if (!this.state) return report(T.dataUnreadable);
     if (this.reading) {
       await this.reading;
-    } else if (this.state.pause_until > this.now()) {
-      return report(T.paused(this.state.pause_until));
+    } else if (this.pauseMono !== undefined && this.monotonic() < this.pauseMono) {
+      return report(T.paused(this.now() + (this.pauseMono - this.monotonic())));
     } else if (this.state.refused) {
-      const mono = this.monotonic();
-      const wall = this.now();
-      const recent =
-        this.lastAttemptMono !== undefined
-          ? mono - this.lastAttemptMono < MIN_GAP
-          : isTime(this.state.attempt_at) && wall - this.state.attempt_at < MIN_GAP;
-      if (recent) {
-        const since =
-          this.lastAttemptMono !== undefined
-            ? mono - this.lastAttemptMono
-            : wall - this.state.attempt_at;
-        return report(T.tooSoon(wall + MIN_GAP - since));
+      const since = this.attemptMono === undefined ? Infinity : this.monotonic() - this.attemptMono;
+      if (since < MIN_GAP) {
+        return report(T.tooSoon(this.now() + MIN_GAP - since));
       }
       await this.read(this.generation, { manual: true });
     } else if (this.readDueMono !== undefined && this.monotonic() >= this.readDueMono) {

@@ -29,6 +29,13 @@
   `adder`, `monthly` fixed, `tax` on both, `fallback_price` WITHOUT default (the module never guesses a
   price; the engine needs a fallback for the running interval, whose price is not published yet). The
   manifest passes the core `validateManifest` (Gladys clone of 2026-11-09), checked by hand.
+- Negative prices published as they are (a credit for the engine, tax included); the cap 5,000 $/MWh
+  kept; beyond ±10,000 $/MWh unreadable (the fallback applies). `fallback_price` is `required` (the core
+  refuses a negative one); the adder may be negative (review r1, I1 and M2).
+- Every zone answered without a readable price = a failure with its real cause (`answer`), the 15-minute
+  pace kept, no pause; unreadable rows logged once per zone (review r1, I2).
+- The pace and the pauses run on the monotonic clock in the process; /data's wall times are turned into
+  monotonic instants at the first load only (review r1, M1). `connected` sends the status again (M4).
 - Sensor: last interval, without `created_at` if it ended < 30 min ago, dated up to 2 h, never beyond,
   once (interval start kept in /data).
 - Four zones only (competitive retail areas): Houston, North, South, West.

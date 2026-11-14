@@ -110,7 +110,12 @@ export async function fetchPrices({ token, key, point, from, to, signal }) {
       limit: SPP_MAX_BYTES,
       signal,
     });
-    return { slots: parsePrices(body, point), date };
+    const stats = {};
+    const slots = parsePrices(body, point, stats);
+    // Rows but none readable, or no row at all for a window that always
+    // holds ended intervals: the answer is not what this module reads.
+    if (slots.length === 0) throw new AnswerError('no readable price in the answer');
+    return { slots, dropped: stats.dropped, date };
   } catch (err) {
     if (keyRefused(err)) throw new RefusedError('key');
     throw err;
@@ -163,7 +168,7 @@ const FIELDS = [
  * unknown). Two different prices for one instant: both left out. Throws
  * AnswerError when the envelope is not this report.
  */
-export function parsePrices(body, point) {
+export function parsePrices(body, point, stats = {}) {
   if (!body || typeof body !== 'object' || Array.isArray(body)) {
     throw new AnswerError('not an ERCOT report');
   }
@@ -183,9 +188,12 @@ export function parsePrices(body, point) {
   };
   const prices = new Map();
   const conflicts = new Set();
+  let rowsOfPoint = 0;
+  let used = 0;
   for (const row of body.data.slice(0, MAX_ROWS)) {
     if (read(row, 'settlementPoint') !== point) continue;
     if (read(row, 'settlementPointType') !== POINT_TYPE) continue;
+    rowsOfPoint += 1;
     const p = strictNumber(read(row, 'settlementPointPrice'));
     if (p === undefined || p < PRICE_MIN || p > PRICE_MAX) continue;
     const repeated = flag(read(row, 'DSTFlag'));
@@ -197,9 +205,13 @@ export function parsePrices(body, point) {
       repeated,
     );
     if (t === undefined) continue;
+    used += 1;
     if (prices.has(t) && prices.get(t) !== p) conflicts.add(t);
     prices.set(t, p);
   }
   for (const t of conflicts) prices.delete(t);
-  return [...prices.entries()].map(([t, p]) => ({ t, p })).sort((a, b) => a.t - b.t);
+  const slots = [...prices.entries()].map(([t, p]) => ({ t, p })).sort((a, b) => a.t - b.t);
+  // Rows of the point and type asked that gave no price (unreadable, conflicting).
+  stats.dropped = rowsOfPoint - used + conflicts.size;
+  return slots;
 }

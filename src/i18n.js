@@ -82,7 +82,10 @@ const REASONS = {
     en: 'the token was not accepted (HTTP 401)',
     fr: "le jeton n'a pas été accepté (HTTP 401)",
   },
-  answer: { en: 'unreadable answer', fr: 'réponse illisible' },
+  answer: {
+    en: 'unreadable answer or unexpected format',
+    fr: 'réponse illisible ou format inattendu',
+  },
   http: { en: 'unexpected HTTP answer', fr: 'réponse HTTP inattendue' },
 };
 
@@ -128,17 +131,25 @@ export const T = {
         ? `Aucun prix récent publié par ERCOT. Prochaine lecture le ${at(next, l)}`
         : `No recent price published by ERCOT. Next read on ${at(next, l)}`,
     ),
-  ok: ({ latest, zones, partial }) =>
+  ok: ({ latest, zones, partial, calendars = [] }) =>
     both((l) => {
       const list = zones.join(', ');
-      const base =
+      let text =
         l === 'fr'
           ? `Prix temps réel lus (${list}), dernier intervalle ${at(latest, l)}`
           : `Real-time prices read (${list}), last interval ${at(latest, l)}`;
-      if (!partial) return base;
+      // A calendar Gladys does not take is said first: the contracts need it.
+      for (const [key, why] of calendars) {
+        const owned = why === 'owned';
+        text =
+          l === 'fr'
+            ? `Calendrier ${key} non alimenté (${owned ? 'tenu par une autre intégration' : 'refusé par Gladys'}). ${text}`
+            : `Calendar ${key} not fed (${owned ? 'owned by another integration' : 'refused by Gladys'}). ${text}`;
+      }
+      if (!partial) return text;
       return l === 'fr'
-        ? `${base} ; dernière lecture incomplète (${(REASONS[partial] ?? REASONS.http).fr})`
-        : `${base}; last read incomplete (${(REASONS[partial] ?? REASONS.http).en})`;
+        ? `${text} ; dernière lecture incomplète (${(REASONS[partial] ?? REASONS.http).fr})`
+        : `${text}; last read incomplete (${(REASONS[partial] ?? REASONS.http).en})`;
     }),
   tooSoon: (next) =>
     both((l) =>
