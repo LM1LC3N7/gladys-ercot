@@ -6,6 +6,8 @@ uses [semantic versioning](https://semver.org/).
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-11-24
+
 ### Fixed
 
 - The User-Agent gives the real version (it said 0.1.0 whatever the release).
@@ -25,5 +27,6 @@ uses [semantic versioning](https://semver.org/).
 - One cycle every 15 minutes at most, kept across restarts; pauses on errors and `Retry-After`; a refused
   login or subscription key is never tried again by itself.
 
-[Unreleased]: https://github.com/LM1LC3N7/gladys-ercot/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/LM1LC3N7/gladys-ercot/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/LM1LC3N7/gladys-ercot/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/LM1LC3N7/gladys-ercot/releases/tag/v0.1.1

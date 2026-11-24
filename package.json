@@ -1,6 +1,6 @@
 {
   "name": "gladys-ercot",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "private": true,
   "description": "ERCOT (Texas) real-time load zone prices for Gladys Assistant: energy calendars for the Gladys energy contracts and one price sensor per zone, from the official ERCOT Public API. Read-only.",
   "type": "module",
