@@ -3,7 +3,12 @@
 // keys, feature keys, calendar and template keys) is forever: never rename one.
 // -----------------------------------------------------------------------------
 
-export const VERSION = '0.1.0';
+import { readFileSync } from 'node:fs';
+
+/** The version of this integration, from package.json (copied in the image). */
+const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+
+export const VERSION = pkg.version;
 /** Honest User-Agent, in the name of the integration (never a browser's). */
 export const USER_AGENT = `gladys-ercot/${VERSION} (+https://github.com/LM1LC3N7/gladys-ercot)`;
 
